@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour
@@ -8,11 +6,9 @@ public class GameManager : MonoBehaviour
 
     //настройки пастронов
     [SerializeField] private int[] maxBullets;
-    private int[] currentBullets;
     [SerializeField] private UIWeapon[] uiWeapons;
     [SerializeField] private int[] addingBullets;
-
-
+    private int[] currentBullets;
 
     void Awake()
     {
@@ -20,13 +16,23 @@ public class GameManager : MonoBehaviour
 
         if (S == null)
             S = this;
-
+        //устанавливаем максимальное количество боеприпасов
         currentBullets = new int[maxBullets.Length];
         for (int i = 0; i < maxBullets.Length; i++)
         {
             currentBullets[i] = maxBullets[i];
             uiWeapons[i].RefreshBullets(currentBullets[i]);
-        }
+        }        
+    }
+    private void OnEnable()
+    {
+        EventAggregator.SetWeapon.AddListener(ActiveWeapon);
+        EventAggregator.AddBullets.AddListener(AddBullets);
+    }
+    private void OnDisable()
+    {
+        EventAggregator.SetWeapon.RemoveListener(ActiveWeapon);
+        EventAggregator.AddBullets.RemoveListener(AddBullets);
     }
 
     public void Fire(int weaponIndex, float cd)
@@ -49,22 +55,12 @@ public class GameManager : MonoBehaviour
                 currentBullets[i] = maxBullets[i];
             uiWeapons[i].RefreshBullets(currentBullets[i]);
         }
-        UIAudioManager.S.PlayRecharge();
     }
 
-    public void AddOneHpToPlayer()
-    {
-        PlayerController.S.AddHP();
-        UIAudioManager.S.PlayHeal();
-    }
-
-    public void InactiveWeapon(int weaponIndex)
-    {
-        uiWeapons[weaponIndex].InactiveWeapon();
-    }
     public void ActiveWeapon(int weaponIndex)
     {
-        uiWeapons[weaponIndex].ActiveWeapon();
+        foreach (UIWeapon weapon in uiWeapons)
+            weapon.InactiveWeapon();//снимаем отображение всех иконок        
+        uiWeapons[weaponIndex]?.ActiveWeapon();
     }
-
 }

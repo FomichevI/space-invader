@@ -21,6 +21,7 @@ public class PlayerController : MonoBehaviour
 
     private int currentWeaponIndex = 0;
 
+    private PlayerAudioManager audioManager;
     private PlayerAnimator playerAnimator;
     private Rigidbody rb;
     private Health health;
@@ -28,7 +29,7 @@ public class PlayerController : MonoBehaviour
     private float yRot; //параметр, необходимый для определения направления движения персонажа
 
     //параметры для стрельбы
-    private float currentCD;
+    private float currentCd;
     private bool canMove = true; //при выстреле из дробовика или винтовки игрок не может двигаться
     private float shotgunRecoil = 10000;
 
@@ -45,8 +46,25 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         playerAnimator = GetComponent<PlayerAnimator>();
         health = GetComponent<Health>();
+        audioManager = GetComponent<PlayerAudioManager>();
 
-        UIPlayerHP.S.ShowHP(health.GetHP());
+    UIPlayerHP.S.ShowHP(health.GetHP());
+    }
+    private void OnEnable()
+    {
+        EventAggregator.HealPlayer.AddListener(AddHp);
+        EventAggregator.MovePlayer.AddListener(Move);
+        EventAggregator.StorPlayer.AddListener(StopMove);
+        EventAggregator.Fire.AddListener(Fire);
+        EventAggregator.SetWeapon.AddListener(SetWeapon);
+    }
+    private void OnDisable()
+    {
+        EventAggregator.HealPlayer.RemoveListener(AddHp);
+        EventAggregator.MovePlayer.RemoveListener(Move);
+        EventAggregator.StorPlayer.RemoveListener(StopMove);
+        EventAggregator.Fire.RemoveListener(Fire);
+        EventAggregator.SetWeapon.RemoveListener(SetWeapon);
     }
 
     public void Move(Vector3 direction)
@@ -60,115 +78,95 @@ public class PlayerController : MonoBehaviour
 
                 playerAnimator.AnimateMove(direction, yRot);
             }
-
+            audioManager.PlayMove();
             //активируем движение тут, чтобы избежать возможность передвижения во время стрельбы из винтовки
-            if (currentCD <= 0)
+            if (currentCd <= 0)
                 canMove = true;
         }
     }
 
-    //не работает
-    //public void Rotate(Vector3 direction)
-    //{
-    //    rb.AddTorque(Vector3.Cross(transform.forward, direction) * 2);
-    //}
+    public void StopMove()
+    {
+        audioManager.StopMove();
+    }
 
     private void FixedUpdate()
     {
         yRot = transform.rotation.y;
 
-        if (currentCD > 0)
-            currentCD -= 0.02f;        
+        if (currentCd > 0)
+            currentCd -= 0.02f;        
     }
 
     public void Fire()
     {
-        if (isAlive && currentCD <= 0)
+        if (isAlive && currentCd <= 0)
         {
             if (GameManager.S.GetCurrentBullets(currentWeaponIndex) > 0) //проверка на наличие патронов
             {
                 playerAnimator.StartFire();
-                currentCD = weapons[currentWeaponIndex].collDown;
-
+                currentCd = weapons[currentWeaponIndex].collDown;
                 if (weapons[currentWeaponIndex].type == weaponsTypes.rifle) //во время трельбы из винтовки передвигаться нельзя
                 {
                     canMove = false;
                     playerAnimator.AnimateMove(Vector3.zero, yRot); //остонавливаем анимацию передвижения
-                    PlayerAudioManager.S.PlayRifle();
+                    audioManager.PlayRifle();
                 }
                 else if (weapons[currentWeaponIndex].type == weaponsTypes.shotgun) //стрельба из дробовика добавляет отдачу
                 {
                     rb.AddForce((transform.position - PlayerInput.S.GetLookPos()).normalized * shotgunRecoil);
-                    PlayerAudioManager.S.PlayShotgun();
+                    audioManager.PlayShotgun();
                 }
                 else
-                    PlayerAudioManager.S.PlayPistol();
+                {
+                    audioManager.PlayPistol();
+                }
 
                 //сам выстрел снарядом
                 weapons[currentWeaponIndex].Fire();
                 //отображение выстрела на UI
-                GameManager.S.Fire(currentWeaponIndex, currentCD);
+                GameManager.S.Fire(currentWeaponIndex, currentCd);
             }
             else //сообщение о недостаточном количестве патронов
             {
-                PlayerAudioManager.S.PlayMisfire();
+                audioManager.PlayMisfire();
             }
         }
     }
 
     public void SetWeapon(int weaponIndex)
     {
-        if (currentCD <= 0)
+        if (currentCd <= 0)
         {
             if (weaponIndex >= 0 && weaponIndex < weapons.Length)
             {
                 for (int i = 0; i < weapons.Length; i++)
                 {
                     weapons[i].gameObject.SetActive(false);
-                    GameManager.S.InactiveWeapon(i); //отображение иконки выбранного оружия
                 }
                 weapons[weaponIndex].gameObject.SetActive(true);
                 currentWeaponIndex = weaponIndex;
-                GameManager.S.ActiveWeapon(currentWeaponIndex);
-                PlayerAudioManager.S.PlayChangeWeapon();
+                audioManager.PlayChangeWeapon();
             }
         }
     }
 
     public void SetNextWeapon()
     {
-        if (currentCD <= 0)
-        {
-            weapons[currentWeaponIndex].gameObject.SetActive(false);
-            GameManager.S.InactiveWeapon(currentWeaponIndex);
-
-            if (currentWeaponIndex < weapons.Length - 1)
-                currentWeaponIndex += 1;
-            else
-                currentWeaponIndex = 0;
-
-            weapons[currentWeaponIndex].gameObject.SetActive(true);
-            GameManager.S.ActiveWeapon(currentWeaponIndex);
-            PlayerAudioManager.S.PlayChangeWeapon();
-        }
+        if (currentWeaponIndex < weapons.Length - 1)
+            currentWeaponIndex += 1;
+        else
+            currentWeaponIndex = 0;
+        EventAggregator.SetWeapon.Invoke(currentWeaponIndex);
     }
 
     public void SetPreviousWeapon()
     {
-        if (currentCD <= 0)
-        {
-            weapons[currentWeaponIndex].gameObject.SetActive(false);
-            GameManager.S.InactiveWeapon(currentWeaponIndex);
-
-            if (currentWeaponIndex > 0)
-                currentWeaponIndex -= 1;
-            else
-                currentWeaponIndex = weapons.Length - 1;
-
-            weapons[currentWeaponIndex].gameObject.SetActive(true);
-            GameManager.S.ActiveWeapon(currentWeaponIndex);
-            PlayerAudioManager.S.PlayChangeWeapon();
-        }
+        if (currentWeaponIndex > 0)
+            currentWeaponIndex -= 1;
+        else
+            currentWeaponIndex = weapons.Length - 1;
+        EventAggregator.SetWeapon.Invoke(currentWeaponIndex);
     }
 
     public void Death()
@@ -177,7 +175,7 @@ public class PlayerController : MonoBehaviour
         isAlive = false;
         PlayerInput.S.canMove = false;
         Invoke("ShowGameOver", 1);
-        PlayerAudioManager.S.PlayDeath();
+        audioManager.PlayDeath();
     }
 
     private void ShowGameOver()
@@ -193,11 +191,11 @@ public class PlayerController : MonoBehaviour
             UIPlayerHP.S.ShowHP(health.GetHP());
             isImmunity = true;
             Invoke("StopImmunity", immunityAfterHit);
-            PlayerAudioManager.S.PlayGetDamage();
+            audioManager.PlayGetDamage();
         }
     }
 
-    public void AddHP()
+    public void AddHp()
     {
         if(health.GetHP() < 3)
         {

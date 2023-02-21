@@ -13,6 +13,17 @@ public class UIAudioManager : MonoBehaviour
     [SerializeField] private AudioSource musicAS;
     [SerializeField] private AudioSource mainAS;
 
+    private void OnEnable()
+    {
+        EventAggregator.AddBullets.AddListener(PlayRecharge);
+        EventAggregator.HealPlayer.AddListener(PlayHeal);
+    }
+    private void OnDisable()
+    {
+        EventAggregator.AddBullets.RemoveListener(PlayRecharge);
+        EventAggregator.HealPlayer.RemoveListener(PlayHeal);
+
+    }
     private void Start()
     {
         DontDestroyOnLoad(transform.parent.gameObject);
@@ -29,18 +40,6 @@ public class UIAudioManager : MonoBehaviour
         mainAS.volume = SaveController.GetSoundVolume();
         musicAS.volume = SaveController.GetMusicVolume();
     }
-
-    //public void SetNewSoundVolume(float volume)
-    //{
-    //    SaveController.SetSoundVolume(volume);
-    //    mainAS.volume = volume;
-    //}
-
-    //public void SetNewMusicVolume(float volume)
-    //{
-    //    SaveController.SetMusicVolume(volume);
-    //    musicAS.volume = volume;
-    //}
 
     public void PlayClick()    {mainAS.PlayOneShot(clickAC);}
     public void PlayComplete() { mainAS.PlayOneShot(completeAC); }

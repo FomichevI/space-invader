@@ -35,11 +35,12 @@ public class PlayerInput : MonoBehaviour
         movement = new Vector3(horizontalMove, 0, verticalMove);
         if (canMove && movement.magnitude != 0)
         {
-            PlayerAudioManager.S.PlayMove();
-            PlayerController.S.Move(movement);
+            EventAggregator.MovePlayer.Invoke(movement);
         }
         else
-            PlayerAudioManager.S.StopMove();
+        {
+            EventAggregator.StorPlayer.Invoke();
+        }
 
         //поворот персонажа в сторону позиции мыши
         if (canMove)
@@ -52,18 +53,18 @@ public class PlayerInput : MonoBehaviour
 
         //стрельба
         if (Input.GetMouseButton(0))
-            PlayerController.S.Fire();
+            EventAggregator.Fire.Invoke();
     }
 
     private void Update()
     {
         //смена оружия
         if (Input.GetKeyDown(KeyCode.Alpha1))
-            PlayerController.S.SetWeapon(0);
+            EventAggregator.SetWeapon.Invoke(0);
         if (Input.GetKeyDown(KeyCode.Alpha2))
-            PlayerController.S.SetWeapon(1);
+            EventAggregator.SetWeapon.Invoke(1);
         if (Input.GetKeyDown(KeyCode.Alpha3))
-            PlayerController.S.SetWeapon(2);
+            EventAggregator.SetWeapon.Invoke(2);
 
         zoom = Input.GetAxis("Mouse ScrollWheel");
         if (zoom != 0)

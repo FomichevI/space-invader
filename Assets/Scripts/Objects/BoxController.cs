@@ -10,9 +10,9 @@ public class BoxController : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (boxType == eBoxType.bullet)
-            GameManager.S.AddBullets();
+            EventAggregator.AddBullets.Invoke();
         else if (boxType == eBoxType.health)
-            GameManager.S.AddOneHpToPlayer();
+            EventAggregator.HealPlayer.Invoke();
         Destroy(gameObject);
         BoxSpawner.S.PickUpBox(boxType, transform.position);
     }

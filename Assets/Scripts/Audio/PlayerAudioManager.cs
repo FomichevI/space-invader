@@ -7,8 +7,6 @@ using UnityEngine;
 
 public class PlayerAudioManager : MonoBehaviour
 {
-    public static PlayerAudioManager S;
-
     private AudioSource mainAS;
     [SerializeField] private AudioSource stepAS;
 
@@ -23,9 +21,6 @@ public class PlayerAudioManager : MonoBehaviour
 
     private void Start()
     {
-        if (S == null)
-            S = this;
-
         mainAS = GetComponent<AudioSource>();
         SetVolume();        
     }
